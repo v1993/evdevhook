@@ -1,0 +1,22 @@
+{
+	"profiles": {
+		"hid_nintendo": {
+			"accel": "y+z-x+",
+			"gyro": "y-z-x+"
+		}
+	},
+	"devices": [
+		{
+			"name": "Nintendo Switch Right Joy-Con IMU",
+			"profile": "hid_nintendo"
+		},
+		{
+			"name": "Nintendo Switch Left Joy-Con IMU",
+			"profile": "hid_nintendo"
+		},
+		{
+			"name": "Nintendo Switch Pro Controller IMU",
+			"profile": "hid_nintendo"
+		}
+	]
+}
