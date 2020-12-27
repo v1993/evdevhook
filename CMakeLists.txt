@@ -13,7 +13,7 @@ pkg_check_modules(libudev REQUIRED IMPORTED_TARGET libudev)
 pkg_check_modules(glibmm REQUIRED IMPORTED_TARGET glibmm-2.4)
 pkg_check_modules(giomm REQUIRED IMPORTED_TARGET giomm-2.4)
 
-find_package(nlohmann_json 3.9.0 REQUIRED)
+find_package(nlohmann_json 3.7.0 REQUIRED)
 find_package(ZLIB REQUIRED)
 
 add_executable(evdevhook
