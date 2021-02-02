@@ -36,6 +36,7 @@
 
 Glib::RefPtr<Gio::Socket> g_socket; ///< Global socket to use
 Glib::RefPtr<Glib::MainLoop> g_mainloop; ///< Main loop used by application
+guint16 g_port = 26760; ///< Port to listen on
 
 // Assign a number to each device
 std::array<VirtualDevice, SLOT_COUNT> g_devices {0, 1, 2, 3};
@@ -141,6 +142,16 @@ namespace {
 			throw std::logic_error("failed to parse config file");
 		}
 
+		{
+			auto& jPort = j["port"];
+
+			if (jPort.is_number_unsigned() && jPort <= std::numeric_limits<guint16>::max()) {
+				g_port = jPort;
+			} else if (!jPort.is_null()) {
+				throw std::logic_error("invalid port specified");
+			}
+		}
+
 		auto& devices = j["devices"];
 		auto& profiles = j["profiles"];
 
@@ -183,18 +194,32 @@ namespace {
 		g_devcount = devnum;
 	}
 
-	void AddDevice(const char* path) {
+	/*
+	 * Try to open motion device from path.
+	 * Note: it is up to caller to free device and close its fd on success!
+	*/
+	libevdev* MotionDeviceForPath(const char* path) {
 		const int fd = ::open(path, O_RDWR | O_NONBLOCK);
 		if (fd == -1)
-			return;
+			return nullptr;
 
 		libevdev* dev = nullptr;
 		if (libevdev_new_from_fd(fd, &dev) != 0) {
 			close(fd);
-			return;
+			return nullptr;
 		}
 
 		if (libevdev_has_property(dev, INPUT_PROP_ACCELEROMETER)) {
+			return dev;
+		} else {
+			libevdev_free(dev);
+			close(fd);
+			return nullptr;
+		}
+	};
+
+	void AddDevice(const char* path) {
+		if (auto dev = MotionDeviceForPath(path)) {
 			std::cout << "Found motion device: " << libevdev_get_name(dev) << "\n";
 			auto it = g_name_to_devidx.find(libevdev_get_name(dev));
 			if (it != g_name_to_devidx.end()) {
@@ -217,80 +242,113 @@ namespace {
 }
 
 int main(int argc, char* argv[]) {
-	Gio::init();
-	g_mainloop = Glib::MainLoop::create();
-	std::cout << std::boolalpha;
+	try {
+		Gio::init();
+		g_mainloop = Glib::MainLoop::create();
+		std::cout << std::boolalpha;
 
-	if (argc != 2) {
-		std::cerr << "Usage: " << argv[0] << " config_file" << std::endl;
-		std::exit(2);
-	}
+		bool listMode = false;
 
-	// Parse config file here
-	{
-		std::ifstream config{argv[1]};
-		LoadConfig(config);
-	}
+		if (argc == 1) {
+			std::cout << "Connected motion devices:" << std::endl;
+			listMode = true;
+		} else if (argc != 2) {
+			std::cerr << "Usage: " << argv[0] << " [config_file]" << std::endl;
+			std::exit(2);
+		}
 
-	udevHandle udev{};
+		// Parse config file here
+		if (!listMode) {
+			std::ifstream config{argv[1]};
+			LoadConfig(config);
+		}
 
-	// Enumerate connected devices
-	// Heavily based on Dolphin's code
-	{
-		udev_enumerate* const enumerate = udev_enumerate_new(udev.getHandle());
-		udev_enumerate_add_match_subsystem(enumerate, "input");
-		udev_enumerate_scan_devices(enumerate);
-		udev_list_entry* const devices = udev_enumerate_get_list_entry(enumerate);
+		udevHandle udev{};
 
-		udev_list_entry* dev_list_entry;
-		udev_list_entry_foreach(dev_list_entry, devices) {
-			const char* path = udev_list_entry_get_name(dev_list_entry);
-			udev_device* dev = udev_device_new_from_syspath(udev.getHandle(), path);
+		// Enumerate connected devices
+		// Heavily based on Dolphin's code
+		{
+			udev_enumerate* const enumerate = udev_enumerate_new(udev.getHandle());
+			udev_enumerate_add_match_subsystem(enumerate, "input");
+			udev_enumerate_scan_devices(enumerate);
+			udev_list_entry* const devices = udev_enumerate_get_list_entry(enumerate);
 
-			if (const char* devnode = udev_device_get_devnode(dev))
-				AddDevice(devnode);
+			udev_list_entry* dev_list_entry;
+			udev_list_entry_foreach(dev_list_entry, devices) {
+				const char* path = udev_list_entry_get_name(dev_list_entry);
+				udev_device* dev = udev_device_new_from_syspath(udev.getHandle(), path);
 
-			udev_device_unref(dev);
-		};
-		udev_enumerate_unref(enumerate);
-	}
+				if (const char* devnode = udev_device_get_devnode(dev)) {
+					if (!listMode) {
+						AddDevice(devnode);
+					} else {
+						if (auto dev = MotionDeviceForPath(devnode)) {
+							std::cout << libevdev_get_name(dev) << '\n';
+							const int fd = libevdev_get_fd(dev);
+							libevdev_free(dev);
+							::close(fd);
+						}
+					}
+				}
 
-	// Hotplug monitor
+				udev_device_unref(dev);
+			};
+			udev_enumerate_unref(enumerate);
+		}
 
-	auto monitor = std::shared_ptr<udev_monitor> {udev_monitor_new_from_netlink(udev.getHandle(), "udev"), udev_monitor_unref};
-	udev_monitor_filter_add_match_subsystem_devtype(monitor.get(), "input", nullptr);
-	udev_monitor_enable_receiving(monitor.get());
+		if (listMode)
+			exit(EXIT_SUCCESS);
 
-	auto monitor_source = Glib::IOSource::create(udev_monitor_get_fd(monitor.get()), Glib::IOCondition::IO_IN);
-	monitor_source->connect([&monitor](Glib::IOCondition) {
-		while (auto dev = std::shared_ptr<udev_device>(udev_monitor_receive_device(monitor.get()), udev_device_unref)) {
-			const char* const devnode = udev_device_get_devnode(dev.get());
-			if (!devnode)
-				continue;
-			if (strcmp(udev_device_get_action(dev.get()), "add") == 0) {
-				AddDevice(devnode);
+		// Hotplug monitor
+
+		auto monitor = std::shared_ptr<udev_monitor> {udev_monitor_new_from_netlink(udev.getHandle(), "udev"), udev_monitor_unref};
+		udev_monitor_filter_add_match_subsystem_devtype(monitor.get(), "input", nullptr);
+		udev_monitor_enable_receiving(monitor.get());
+
+		auto monitor_source = Glib::IOSource::create(udev_monitor_get_fd(monitor.get()), Glib::IOCondition::IO_IN);
+		monitor_source->connect([&monitor](Glib::IOCondition) {
+			while (auto dev = std::shared_ptr<udev_device>(udev_monitor_receive_device(monitor.get()), udev_device_unref)) {
+				const char* const devnode = udev_device_get_devnode(dev.get());
+				if (!devnode)
+					continue;
+				if (std::strcmp(udev_device_get_action(dev.get()), "add") == 0) {
+					AddDevice(devnode);
+				}
+			}
+			return true;
+		});
+		monitor_source->attach(g_mainloop->get_context());
+
+		// Setup socket
+		g_socket = Gio::Socket::create(Gio::SocketFamily::SOCKET_FAMILY_IPV4, Gio::SocketType::SOCKET_TYPE_DATAGRAM, Gio::SocketProtocol::SOCKET_PROTOCOL_UDP);
+		g_socket->set_blocking(true); // Should never block for UDP anyways
+		try {
+			g_socket->bind(Gio::InetSocketAddress::create(Gio::InetAddress::create_loopback(Gio::SocketFamily::SOCKET_FAMILY_IPV4), g_port), false);
+		} catch (Gio::Error& gerror) {
+			if (gerror.code() == Gio::Error::ADDRESS_IN_USE) {
+				std::cerr << "Can't bind socket: already used. Do you have other DSU provider running?" << '\n'
+						  << "If you need few providers running at once, try changing port." << std::endl;
+				exit(EXIT_FAILURE);
+			} else {
+				throw;
 			}
 		}
-		return true;
-	});
-	monitor_source->attach(g_mainloop->get_context());
+		auto socket_source = g_socket->create_source(Glib::IOCondition::IO_IN);
+		std::array<char, 256> buf;
+		socket_source->connect([&buf](Glib::IOCondition) {
+			Glib::RefPtr<Gio::SocketAddress> addr;
+			size_t size = g_socket->receive_from(addr, buf.data(), buf.size());
+			ProcessIncoming(addr, {buf.data(), size});
+			return true;
+		});
+		socket_source->attach(g_mainloop->get_context());
 
-	// Setup socket
-	g_socket = Gio::Socket::create(Gio::SocketFamily::SOCKET_FAMILY_IPV4, Gio::SocketType::SOCKET_TYPE_DATAGRAM, Gio::SocketProtocol::SOCKET_PROTOCOL_UDP);
-	g_socket->set_blocking(true); // Right?..
-	g_socket->bind(Gio::InetSocketAddress::create(Gio::InetAddress::create_loopback(Gio::SocketFamily::SOCKET_FAMILY_IPV4), 26760), false);
-	auto socket_source = g_socket->create_source(Glib::IOCondition::IO_IN);
-	std::array<char, 256> buf;
-	socket_source->connect([&buf](Glib::IOCondition) {
-		Glib::RefPtr<Gio::SocketAddress> addr;
-		size_t size = g_socket->receive_from(addr, buf.data(), buf.size());
-		ProcessIncoming(addr, {buf.data(), size});
-		return true;
-	});
-	socket_source->attach(g_mainloop->get_context());
-
-	// I'd very much prefer C++ version, but there doesn't seem to be one?..
-	g_unix_signal_add(SIGINT, OnSigint, nullptr);
-	g_mainloop->run();
-	std::cout << "Exiting" << std::endl;
+		// I'd very much prefer C++ version, but there doesn't seem to be one?..
+		g_unix_signal_add(SIGINT, OnSigint, nullptr);
+		g_mainloop->run();
+		std::cout << "Exiting" << std::endl;
+	} catch (std::exception& e) {
+		std::cerr << "Fatal error: " << e.what() << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
 };

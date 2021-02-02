@@ -121,7 +121,7 @@ void ProcessIncoming(Glib::RefPtr<Gio::SocketAddress> addr, std::string_view p) 
 	uint32_t clientId = header->id;
 
 	uint32_t messageType = *(reinterpret_cast<const uint32_t*>(&p[16]));
-	
+
 	std::string_view pDat = {&p[20], p.size() - 20};
 	switch (messageType) {
 	case 0x100000:

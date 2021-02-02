@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <numeric>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -58,7 +59,7 @@ bool VirtualDevice::Connect(libevdev* device) noexcept {
 	// TODO: query current value for each axis and set it in accordance on setup?
 	for (uint8_t i = ABS_X; i <= (have_gyro ? ABS_RZ : ABS_Z); ++i) {
 		auto* const info = libevdev_get_abs_info(dev, i);
-		center[i] = static_cast<int32_t>((static_cast<int64_t>(info->minimum) + static_cast<int64_t>(info->maximum)) / 2ll);
+		center[i] = std::midpoint(info->minimum, info->maximum);
 		resolution[i] = info->resolution;
 	};
 
@@ -134,20 +135,21 @@ bool VirtualDevice::onInput(Glib::IOCondition condition) {
 				case EV_MSC:
 					if (ev.code == MSC_TIMESTAMP) {
 						// It wraps around each 1.2 hours (14 half-lifes of uranium-241, apparently), so we need to handle this
-						int32_t newTimestamp = ev.value;
-						int32_t shortOldValue = static_cast<int32_t>(static_cast<uint32_t>(timestamp) << 1 >> 1); // How it looks without higher bits
+						constexpr uint64_t signBit = 1ull << 31;
+						const int32_t newTimestamp = ev.value;
+						const int32_t shortOldValue = static_cast<int32_t>(static_cast<uint32_t>(timestamp) & ~signBit); // How it looks without higher bits
 						if (shortOldValue > newTimestamp) {
 							// Wrapping have happened, account for it
-							timestamp += (1ull << 31);
+							timestamp += signBit;
 						}
 
-						if (timestamp == shortOldValue) {
+						if (timestamp < signBit) {
 							// It will go this way for slighty more than an hour of gameplay
 							timestamp = newTimestamp;
 						} else {
 							// That's what you get for playing for too long
-							// TODO: replace with logical operation for speed? It should be good enough already, but still.
-							timestamp = timestamp - shortOldValue + newTimestamp;
+							// Cuts off everything after sign bit and overwrites it with new timestamp. Should be optimal in terms of speed.
+							timestamp = (timestamp & ~(signBit - 1)) | newTimestamp;
 						}
 					}
 					break;
