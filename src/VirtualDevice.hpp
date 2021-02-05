@@ -79,9 +79,9 @@ class VirtualDevice {
 	private:
 		bool onInput(Glib::IOCondition);
 
+		void processSync(struct timeval& ev);
 		void updateTimestamp(int32_t eventTimestamp);
 		void updateAxis(uint16_t axis, int32_t value);
-		void processSync(struct timeval& ev);
 
 		DeviceConfiguration conf;
 		size_t name_hash: 48;
