@@ -176,8 +176,9 @@ bool VirtualDevice::onInput(Glib::IOCondition condition) {
 
 							if (conf.profile.invert[ev.code])
 								valueCentered *= -1;
+							
 
-							state[idx] = static_cast<double>(valueCentered) / resolution[ev.code];
+							state[idx] = static_cast<double>(valueCentered) * conf.profile.gyroSensitivity / resolution[ev.code];
 						}
 					}
 

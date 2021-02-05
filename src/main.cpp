@@ -131,6 +131,14 @@ namespace {
 		if (!parseData(j["gyro"], ABS_RX)) {
 			std::cerr << "Warning: missing gyroscope binding. Don't mind if it have no gyrosope.\n";
 		}
+		{
+			auto& jGyroSensitivity = j["gyroSensitivity"];
+			if (jGyroSensitivity.is_number()) {
+				prof.gyroSensitivity = jGyroSensitivity;
+			} else if (!jGyroSensitivity.is_null()) {
+				throw std::logic_error("gyroSensitivity must be a number (preferably float)");
+			}
+		}
 		return prof;
 	};
 

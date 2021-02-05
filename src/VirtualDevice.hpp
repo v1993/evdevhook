@@ -38,7 +38,8 @@ static_assert((ABS_X == 0) && (ABS_Z == 2) && (ABS_RX == 3) && (ABS_RZ == 5), "w
 struct OrientationProfile {
 	std::array<std::int8_t, 6> mapping {-1, -1, -1, -1, -1, -1}; ///< Which virtual axis is activated by given input
 	std::bitset<6> invert {false}; ///< Should it be inverted
-	//
+	
+	double gyroSensitivity = 1.0; ///< Multiplier for gyro values
 };
 
 struct DeviceConfiguration {

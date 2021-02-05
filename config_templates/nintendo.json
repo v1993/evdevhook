@@ -1,6 +1,7 @@
 {
 	"profiles": {
 		"hid_nintendo": {
+			"gyroSensitivity": 0.858,
 			"accel": "y+z-x+",
 			"gyro": "y-z-x+"
 		}
