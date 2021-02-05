@@ -268,6 +268,10 @@ int main(int argc, char* argv[]) {
 		// Parse config file here
 		if (!listMode) {
 			std::ifstream config{argv[1]};
+			if (!config) {
+				std::cerr << "Can't open configuration file" << '\n';
+				std::exit(EXIT_FAILURE);
+			}
 			LoadConfig(config);
 		}
 
