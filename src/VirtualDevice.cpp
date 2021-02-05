@@ -65,6 +65,13 @@ bool VirtualDevice::Connect(libevdev* device) noexcept {
 
 	timestamp = 0;
 
+	// Add a profile option to enfoce this fallack?
+	have_timestamp_event = libevdev_has_event_code(dev, EV_MSC, MSC_TIMESTAMP);
+
+	if (!have_timestamp_event) {
+		std::cout << "Accurate timestamping of motion unavailable, using fallback\n";
+	}
+
 	source = Glib::IOSource::create(libevdev_get_fd(dev), Glib::IOCondition::IO_IN | Glib::IOCondition::IO_HUP);
 	source->connect(sigc::mem_fun(*this, &VirtualDevice::onInput));
 	source->attach(g_mainloop->get_context());
@@ -104,6 +111,12 @@ bool VirtualDevice::onInput(Glib::IOCondition condition) {
 				switch (ev.type) {
 				case EV_SYN: {
 					if (clients.size() == 0) return true; // Nobody is listening, good
+
+					// Fallback for drivers lacking fully accurate motion timing
+					if (!have_timestamp_event) {
+						timestamp = uint64_t(ev.time.tv_sec) * 1000000 + uint64_t(ev.time.tv_usec);
+					}
+
 					// Five seconds timeout
 					gint64 timeoutBefore = g_get_monotonic_time() - 5000000;
 
@@ -135,9 +148,10 @@ bool VirtualDevice::onInput(Glib::IOCondition condition) {
 				case EV_MSC:
 					if (ev.code == MSC_TIMESTAMP) {
 						// It wraps around each 1.2 hours (14 half-lifes of uranium-241, apparently), so we need to handle this
+						// Note: if device lacks this event code (check have_timestamp_event), fallback in EV_SYN codepath is used
 						constexpr uint64_t signBit = 1ull << 31;
 						const int32_t newTimestamp = ev.value;
-						const int32_t shortOldValue = static_cast<int32_t>(static_cast<uint32_t>(timestamp) & ~signBit); // How it looks without higher bits
+						const int32_t shortOldValue = static_cast<int32_t>(timestamp & ~signBit); // How it looks without higher bits
 						if (shortOldValue > newTimestamp) {
 							// Wrapping have happened, account for it
 							timestamp += signBit;

@@ -48,32 +48,6 @@ struct DeviceConfiguration {
 	// std::array<std::int32_t, 6> calibration {0}; ///< TODO: Raw calibration value to apply
 };
 
-// Commented out, use client IDs instead
-/*
-struct ClientAddrHashable {
-	ClientAddrHashable(Gio::InetSocketAddress* addr):
-		host(addr->get_address()->to_string()),
-		port(addr->get_port()) {};
-
-	bool operator==(const ClientAddrHashable& other) {
-		return host == other.host && port == other.port;
-	};
-
-	std::string host;
-	uint16_t port;
-};
-
-namespace std {
-	template<> struct hash<ClientAddrHashable> {
-		std::size_t operator()(ClientAddrHashable const& addr) const noexcept {
-			std::size_t h1 = std::hash<std::string> {}(addr.host);
-			std::size_t h2 = std::hash<uint16_t> {}(addr.port);
-			return h1 ^ (h2 << 1);
-		}
-	};
-}
-*/
-
 struct ClientDescription {
 	Glib::RefPtr<Gio::SocketAddress> addr;
 	gint64 requestTime; // Monotonic time from g_get_monotonic_time() for timeouts
@@ -83,6 +57,8 @@ class VirtualDevice {
 	public:
 		VirtualDevice() = delete;
 		VirtualDevice(uint8_t number_);
+		VirtualDevice(const VirtualDevice&) = delete;
+		VirtualDevice(VirtualDevice&&) = delete;
 		~VirtualDevice();
 
 		void SetConfig(DeviceConfiguration&& conf_) {
@@ -108,12 +84,16 @@ class VirtualDevice {
 		libevdev* dev = nullptr;
 
 		std::array<float, 6> state;
-		uint64_t timestamp = 0; // Kernel only reports 32-bit timestamp, so we try to compensate for this
+
+		// Kernel only reports 32-bit timestamp, so we try to compensate for this
+		// Unused if have_timestamp_event is set to false
+		uint64_t timestamp = 0;
 
 		std::array<std::int32_t, 6> center;
 		std::array<double, 6> resolution;
 
 		bool have_gyro;
+		bool have_timestamp_event;
 
 		Glib::RefPtr<Glib::IOSource> source;
 
