@@ -91,7 +91,6 @@ class VirtualDevice {
 		std::array<float, 6> state;
 
 		// Kernel only reports 32-bit timestamp, so we try to compensate for this
-		// Unused if have_timestamp_event is set to false
 		uint64_t timestamp = 0;
 
 		std::array<std::int32_t, 6> center;
