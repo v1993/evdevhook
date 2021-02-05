@@ -41,4 +41,4 @@ Basic usage is as follows:
 ```bash
 evdevhook [config file]
 ```
-Check out `config_templates` for useful configs and information on how to create your own if needed. Run withour arguments to see what motion devices are connected to your system.
+Check out `config_templates` for useful configs and information on how to create your own if needed. Run without arguments to see what motion devices are connected to your system.
