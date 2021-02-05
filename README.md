@@ -33,3 +33,12 @@ sudo apt install libevdev-dev libudev-dev libglibmm-2.4-dev nlohmann-json3-dev z
 ```
 
 You'll also need CMake and a C++ compiler (like gcc), but you probably already have them.
+
+# Usage
+
+Basic usage is as follows:
+
+```bash
+evdevhook [config file]
+```
+Check out `config_templates` for useful configs and information on how to create your own if needed. Run withour arguments to see what motion devices are connected to your system.
