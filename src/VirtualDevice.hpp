@@ -38,7 +38,7 @@ static_assert((ABS_X == 0) && (ABS_Z == 2) && (ABS_RX == 3) && (ABS_RZ == 5), "w
 struct OrientationProfile {
 	std::array<std::int8_t, 6> mapping {-1, -1, -1, -1, -1, -1}; ///< Which virtual axis is activated by given input
 	std::bitset<6> invert {false}; ///< Should it be inverted
-	
+
 	double gyroSensitivity = 1.0; ///< Multiplier for gyro values
 };
 
@@ -78,6 +78,10 @@ class VirtualDevice {
 		void ReportRequest(uint32_t id, Glib::RefPtr<Gio::SocketAddress> addr);
 	private:
 		bool onInput(Glib::IOCondition);
+
+		void updateTimestamp(int32_t eventTimestamp);
+		void updateAxis(uint16_t axis, int32_t value);
+		void processSync(struct timeval& ev);
 
 		DeviceConfiguration conf;
 		size_t name_hash: 48;
