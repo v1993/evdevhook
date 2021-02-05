@@ -48,25 +48,6 @@ uint32_t g_server_id{std::random_device()()};
 uint8_t g_devcount {};
 
 namespace {
-	struct udevHandle {
-		public:
-			udevHandle(): handle(udev_new()) {
-				if (!handle)
-					throw std::runtime_error("Failed to obtain udev object");
-			};
-			~udevHandle() {
-				if (handle) {
-					udev_unref(handle);
-				}
-			};
-			udevHandle(const udevHandle&) = delete;
-
-			udev* getHandle() const { return handle; };
-
-		protected:
-			udev* const handle;
-	};
-
 	/// Create profile from json description
 	/// Input must be valid json object!
 	OrientationProfile ParseProfile(auto& j) {
@@ -275,12 +256,12 @@ int main(int argc, char* argv[]) {
 			LoadConfig(config);
 		}
 
-		udevHandle udev{};
+		std::shared_ptr<udev> udev {udev_new(), udev_unref};
 
 		// Enumerate connected devices
 		// Heavily based on Dolphin's code
 		{
-			udev_enumerate* const enumerate = udev_enumerate_new(udev.getHandle());
+			udev_enumerate* const enumerate = udev_enumerate_new(udev.get());
 			udev_enumerate_add_match_subsystem(enumerate, "input");
 			udev_enumerate_scan_devices(enumerate);
 			udev_list_entry* const devices = udev_enumerate_get_list_entry(enumerate);
@@ -288,7 +269,7 @@ int main(int argc, char* argv[]) {
 			udev_list_entry* dev_list_entry;
 			udev_list_entry_foreach(dev_list_entry, devices) {
 				const char* path = udev_list_entry_get_name(dev_list_entry);
-				udev_device* dev = udev_device_new_from_syspath(udev.getHandle(), path);
+				udev_device* dev = udev_device_new_from_syspath(udev.get(), path);
 
 				if (const char* devnode = udev_device_get_devnode(dev)) {
 					if (!listMode) {
@@ -313,7 +294,7 @@ int main(int argc, char* argv[]) {
 
 		// Hotplug monitor
 
-		auto monitor = std::shared_ptr<udev_monitor> {udev_monitor_new_from_netlink(udev.getHandle(), "udev"), udev_monitor_unref};
+		auto monitor = std::shared_ptr<udev_monitor> {udev_monitor_new_from_netlink(udev.get(), "udev"), udev_monitor_unref};
 		udev_monitor_filter_add_match_subsystem_devtype(monitor.get(), "input", nullptr);
 		udev_monitor_enable_receiving(monitor.get());
 
