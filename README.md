@@ -23,3 +23,13 @@ Please note that ability to support device does not really depend on us and it's
 ### Not supported (notably)
 
 * `hid-wiimote` - WiiMote's driver does not expose correctly marked device that can be used directly (check out [linuxmotehook](https://github.com/v1993/linuxmotehook))
+
+# Dependences
+
+This project depends on few common software packages. The following command can install build-time requirements on Ubuntu and derived distributives:
+
+```bash
+sudo apt install libevdev-dev libudev-dev libglibmm-2.4-dev nlohmann-json3-dev zlib1g-dev
+```
+
+You'll also need CMake and a C++ compiler (like gcc), but you probably already have them.
