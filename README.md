@@ -2,7 +2,7 @@
 
 This project uses evdev input system Linux provides to support motion input by devices whose drivers have exposed such functionality.
 
-Its main goal is to reduce about of motion providers, giving a unified solution for all devices whose drivers expose motion in standardized way.
+Its main goal is to reduce amount of motion providers, giving a unified solution for all devices whose drivers expose motion in standardized way.
 
 ## Support status for devices
 
