@@ -1,0 +1,18 @@
+{
+    "profiles": {
+        "DualShock 3 and 4": {
+            "accel": "x-y-z-",
+            "gyro": "x-y-z-"
+        }
+    },
+    "devices": [
+        {
+            "name": "Sony PLAYSTATION(R)3 Controller Motion Sensors",
+            "profile": "DualShock 3 and 4"
+        },
+        {
+            "name": "Sony Interactive Entertainment Wireless Controller Motion Sensors",
+            "profile": "DualShock 3 and 4"
+        }
+    ]
+} 
