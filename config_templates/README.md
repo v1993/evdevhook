@@ -7,4 +7,4 @@ reasonable subset of devices (usually determined by driver used) that evdevhook 
 
 * `nintendo.json` - support for JoyCons and ProCon.
 Currently requires https://github.com/nicman23/dkms-hid-nintendo (until that driver gets into mainline kernel, which may happen soon).
-* `playstation.json` - support for DualShock 3 and 4 conntrollers. DualSense requires https://aur.archlinux.org/hid-playstation-dkms.git. Thanks to forsh33 for help with testing those.
+* `playstation.json` - support for DualShock and DualSense controllers (DualSense is not in mainline kernel yet). Thanks to forsh33 and qurious-pixel for help with testing those.
