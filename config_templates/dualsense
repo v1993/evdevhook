@@ -1,0 +1,18 @@
+{
+    "profiles": {
+        "DualSense": {
+            "accel": "x-y-z-",
+            "gyro": "x-y-z-"
+        }
+    },
+    "devices": [
+        {
+            "name": "Wireless Controller Motion Sensors",
+            "profile": "DualSense"
+        },
+        {
+            "name": "Sony Interactive Entertainment Wireless Controller Motion Sensors",
+            "profile": "DualSense"
+        }
+    ]
+} 
