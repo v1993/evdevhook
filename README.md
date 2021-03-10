@@ -14,10 +14,10 @@ Please note that ability to support device does not really depend on us and it's
 
 * `hid-nintendo` - Nintendo Switch's JoyCons and ProCon (Note: not in mainline kernel yet, needs [dkms module](https://github.com/nicman23/dkms-hid-nintendo) as of now)
 * `hid-sony` - DualShock 3 and 4 controllers (DS3 lacks gyro)
+* `hid-playstation` - DualSense controller (Note: not in mainline kernel yet as of now)
 
 ### Supported, but not tested (no example config, help very welcome)
 
-* `hid-playstation` - DualSense controller (Note: not in mainline kernel yet as of now)
 * `hid-udraw-ps3`, `wacom_wac` - THQ PS3 uDraw, Wacom 27QHD tablets (nobody was high enough to try and control games with motion from those devices yet, they also lack gyros)
 
 ### Not supported (notably)
