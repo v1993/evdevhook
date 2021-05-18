@@ -1,0 +1,50 @@
+name: Evdevhook
+
+on: 
+  push:
+
+env:
+  DEFAULT_BRANCH: master
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+
+jobs:
+  build:
+    name: Build Evdevhook
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Prepare ccache timestamp
+        id: ccache_cache_timestamp
+        shell: cmake -P {0}
+        run: |
+          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+          message("::set-output name=timestamp::${current_date}")
+      - name: cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.ccache
+          key: build-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+          restore-keys: |
+            build-ccache-
+      - name: Install Linux dependencies
+        run: |
+          sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu `lsb_release -sc` main universe restricted multiverse"
+          sudo apt-get update -y -qq
+          sudo apt-get install libevdev-dev libudev-dev libglibmm-2.4-dev nlohmann-json3-dev zlib1g-dev ninja-build cmake
+      - name: Execute build
+        run: | 
+          mkdir artifacts
+          mkdir build && cd build
+          cmake -GNinja .. 
+          ninja
+          ls -al
+          zip -j ../artifacts/evdevhook.zip evdevhook ../config_templates/*.json
+      - name: Upload build
+        run: |
+            ls -al artifacts/
+            wget -c https://github.com/tcnksm/ghr/releases/download/v0.13.0/ghr_v0.13.0_linux_amd64.tar.gz
+            tar xfv ghr_v0.13.0_linux_amd64.tar.gz      
+            ghr_v0.13.0_linux_amd64/ghr -recreate -n 'Evdevhook build' -b "GitHub https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" evdevhook artifacts/
+    
