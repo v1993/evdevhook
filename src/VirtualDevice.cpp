@@ -174,7 +174,9 @@ void VirtualDevice::updateAxis(uint16_t axis, int32_t value) {
 			if (conf.profile.invert[axis])
 				valueCentered *= -1;
 
-			state[idx] = static_cast<double>(valueCentered) * conf.profile.gyroSensitivity / resolution[axis];
+			state[idx] = static_cast<double>(valueCentered) / resolution[axis];
+			if (axis >= ABS_RX)
+				state[idx] *= conf.profile.gyroSensitivity;
 		}
 	}
 }
