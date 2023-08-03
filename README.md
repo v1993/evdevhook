@@ -1,4 +1,5 @@
 # evdevhook - DSU server for motion from evdev compatible joysticks
+## Please see [evdevhook2](https://github.com/v1993/evdevhook2) for successor to this project.
 
 This project uses evdev input system Linux provides to support motion input by devices whose drivers have exposed such functionality.
 
